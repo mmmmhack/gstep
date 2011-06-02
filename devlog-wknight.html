@@ -1,0 +1,52 @@
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="css/style.css"/>
+<script src="js/init.js"></script>
+<title>Development Log - wknight - gstep</title>
+</head>
+<body onload="init()">
+<h1>Development Log - wknight - gstep</h1>
+
+<h2>2011-06-01</h2>
+
+<p>
+Starting on use of bstrlib in the code.
+</p>
+
+<h2>2011-06-02</h2>
+
+<p>
+Finished compile fixes yesterday, today, will start debugging (currently hangs, think I know what
+the problem is). I'm tempted to use pyclewn, which might take a little more time, but I want to
+get comfortable with it.
+</p>
+
+<p>
+Man, pyclewn is sweet. Now I can really dive into knowing gdb while living in my favorite little
+world of vim. So far, I was able to start Pyclewn, send commands to gdb using ':C...', start
+and step through the gstep program, examine data in various formats, observe that my suspicion
+was correct about where the program was getting stuck (failed to match the gdb terminator sequence
+in the read buffer), and also note that the next read from gstep stdout was a blocking read.
+Then I was able to send a 'Csigint' through pyclewn to interrupt the program and resume
+interaction with gdb. All from the comfort of vim. Great stuff!
+</p>
+
+<p>
+This is the development environment that RMS and disciples had with EMACS/gdb that I as a VI
+apostate have been missing for so long.
+</p>
+
+<p>
+Still lots of stuff to figure out with pyclewn. Such as, currently the clewn console always wants
+to appear on top. But I'll work all that out in time, right now it's very usable as is.
+Now is also probably the time to really start learning to use the c quick-fix features of vim.
+</p>
+
+<p>
+Bug fixed! Program is currently working as expected. Next: start adding some parsing routines
+to detect gdb output. First though, I'm adding this project to svn.
+</p>
+
+</body>
+</html>
+
