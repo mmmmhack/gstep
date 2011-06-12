@@ -1,5 +1,6 @@
-#include <unistd.h>
+#include <sys/types.h>
 #include <sys/time.h>
+#include <unistd.h>
 #include <errno.h>
 #include <time.h>
 #include <stdlib.h>
@@ -10,6 +11,22 @@
 void sys_err(const char* msg) {
   perror(msg);
   exit(1);
+}
+
+void log_msg(const char* s, const char* file, const int line) {
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  char timestamp[128];
+  sprintf(timestamp, "%ld.%06d", tv.tv_sec, tv.tv_usec);
+
+  pid_t pid = getpid();  
+  char fname[128];
+  sprintf(fname, "log/%d.log", pid);
+  FILE* fs = fopen(fname, "a");
+  if(!fs)
+    sys_err("fopen() failed");
+  fprintf(fs, "[%s] %s:%d: %s\n", timestamp, file, line, s);
+  fclose(fs);
 }
 
 // time funcs

@@ -5,16 +5,21 @@ CFLAGS += -Wall -g
 
 includes = -I$(bstrlib_dir)/include -I.
 libs = -L$(bstrlib_dir)/lib -lbstrlib
-objs = main.o init.o util.o gdb.o cleanup.o
+objs = util.o 
 
-all: gstep
+all: gserver gclient
 
-gstep: $(objs)
-	$(CC) $(CFLAGS) -o $@ $(objs) $(libs)
+gserver: gserver.o $(objs)
+	$(CC) $(CFLAGS) -o $@ gserver.o $(objs) $(libs)
+
+gclient: gclient.o $(objs)
+	$(CC) $(CFLAGS) -o $@ gclient.o $(objs) $(libs)
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $(includes) -c $<
 
+#.PRECIOUS: %.o
+
 clean:
-	-rm gstep
+	-rm gserver gclient
 	-rm *.o

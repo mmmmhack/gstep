@@ -1,6 +1,10 @@
 #ifndef _util_h
 #define _util_h
-#include "time.h"
+#include <time.h>
+
+// logging
+#define LOG(s) log_msg(s, __FILE__, __LINE__)
+void log_msg(const char* s, const char* file, const int line);
 
 // error funcs
 void sys_err(const char* msg);
