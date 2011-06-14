@@ -14,6 +14,8 @@ static int port_num = 6667;
 static const char* addr_ip = "127.0.0.1";
 
 int main(int argc, char** argv) {
+  INFO(bdata(bformat("beg main(): pid: %d", getpid())));
+
   if(argc < 2) {
     fprintf(stderr, "missing request arg\n");
     exit(1);
@@ -48,9 +50,9 @@ int main(int argc, char** argv) {
 //  size_t msg_len = strlen(msg);
   const char* msg = bdata(request);
   size_t msg_len = blength(request);
-  LOG("bef send");
+  TRACE("bef send");
   rc = send(s, msg, msg_len, 0);
-  LOG("aft send");
+  TRACE("aft send");
   if(rc < 0)
     sys_err("send() failed");
   if(rc != (int) msg_len)
@@ -79,9 +81,9 @@ int main(int argc, char** argv) {
   } 
 
   // close socket
-  LOG("bef close()");
+  TRACE("bef close()");
   rc = close(s);
-  LOG("aft close()");
+  TRACE("aft close()");
   if(rc < 0)
     sys_err("close socket failed");
   

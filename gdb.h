@@ -3,8 +3,8 @@
 #include <signal.h>
 
 pid_t gdb_pid();
-//pid_t gdb_set_pid(pid_t pid);
-int gdb_init();
+int gdb_start();
 void gdb_read();
 void gdb_write(const char* s);
+void gdb_kill();
 #endif

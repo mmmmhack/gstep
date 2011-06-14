@@ -3,17 +3,36 @@
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
 
 #include "util.h"
 
+static const char* log_level_desc(int level) {
+  switch(level) {
+  case LOG_LEVEL_TRACE: return "TRACE";
+  case LOG_LEVEL_DEBUG: return "DEBUG";
+  case LOG_LEVEL_INFO: return "INFO";
+  case LOG_LEVEL_WARN: return "WARN";
+  case LOG_LEVEL_ERROR: return "ERROR";
+  case LOG_LEVEL_ALWAYS: return "LOG";
+  default: return "UNKNOWN";
+  }
+}
+
+static int _log_level = LOG_LEVEL_INFO;
+
+int log_level() {return _log_level;}
+void log_set_level(int level) {_log_level = level;}
+
 void sys_err(const char* msg) {
+  ERROR(msg);
   perror(msg);
   exit(1);
 }
 
-void log_msg(const char* s, const char* file, const int line) {
+void log_msg(int level, const char* s, const char* file, const int line) {
   struct timeval tv;
   gettimeofday(&tv, NULL);
   char timestamp[128];
@@ -25,7 +44,8 @@ void log_msg(const char* s, const char* file, const int line) {
   FILE* fs = fopen(fname, "a");
   if(!fs)
     sys_err("fopen() failed");
-  fprintf(fs, "[%s] %s:%d: %s\n", timestamp, file, line, s);
+  fprintf(fs, "[%s] %s: %s:%d: %s\n", timestamp, log_level_desc(level), file, line, s);
+  fflush(fs);
   fclose(fs);
 }
 
@@ -37,7 +57,14 @@ struct timeval time_now() {
 }
 
 // returns diff = x - y
-struct timeval time_sub(struct timeval* x, struct timeval* y) {
+struct timeval time_sub(const struct timeval* xp, const struct timeval* yp) {
+  struct timeval xl, yl;
+  memcpy(&xl, xp, sizeof(xl));
+  memcpy(&yl, yp, sizeof(yl));
+  struct timeval* x = &xl;
+  struct timeval* y = &yl;
+
+/* algorithm below is from libc docs, but doesn't work in my opinion
   // Perform the carry for the later subtraction by updating b. 
   if(x->tv_usec < y->tv_usec) {
     int nsec = (y->tv_usec - x->tv_usec) / 1000000 + 1;
@@ -55,9 +82,30 @@ struct timeval time_sub(struct timeval* x, struct timeval* y) {
   result.tv_sec = x->tv_sec - y->tv_sec;
   result.tv_usec = x->tv_usec - y->tv_usec;
   return result;
+*/
+  // subtract lesser from greater
+  int neg_result = 0;
+  if(time_greater(y, x)) {
+    neg_result = 1;
+    x = &yl;
+    y = &xl;
+  }
+  struct timeval result;
+  // subtract usec, borrow if needed
+  if(x->tv_usec < y->tv_usec) {
+    x->tv_sec -= 1;
+    x->tv_usec += 1e6;
+  }
+  result.tv_usec = x->tv_usec - y->tv_usec;
+  result.tv_sec = x->tv_sec - y->tv_sec;
+  if(neg_result) {
+    result.tv_sec = -result.tv_sec;
+    result.tv_usec = -result.tv_usec;
+  }
+  return result;
 }
 
-int time_greater(struct timeval* x, struct timeval* y) {
+int time_greater(const struct timeval* x, const struct timeval* y) {
   if(x->tv_sec > y->tv_sec)
     return 1;
   else if(y->tv_sec > x->tv_sec)
@@ -65,7 +113,7 @@ int time_greater(struct timeval* x, struct timeval* y) {
   return x->tv_usec > y->tv_usec;
 }
 
-void time_sleep(struct timeval* t) {
+void time_sleep(const struct timeval* t) {
   struct timespec ts = {t->tv_sec, t->tv_usec * 1000};
   nanosleep(&ts, NULL);
 }

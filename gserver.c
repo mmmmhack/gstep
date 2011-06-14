@@ -10,6 +10,7 @@
 
 #include "bstrlib.h"
 #include "util.h"
+#include "gdb.h"
 
 static in_port_t port_num = 6667;
 static const int MAX_PENDING = 0;
@@ -23,7 +24,12 @@ struct Cmd {
 };
 
 bstring start_gdb(bstring req) {
-  return bfromcstr("501 Not Implemented\n");
+//  return bfromcstr("501 Not Implemented\n");
+  int rc = gdb_start();
+  if(rc) {
+    return bfromcstr("502 Gdb Failed To Start\n");
+  }
+  return bfromcstr("200 OK\n");
 }
 
 bstring quit_gdb(bstring req) {
@@ -31,12 +37,12 @@ bstring quit_gdb(bstring req) {
 }
 
 void kill_gdb() {
-  
+  gdb_kill();  
 }
 
 bstring quit_gserv(bstring req) {
   kill_gdb();
-  LOG("quitting\n");
+  INFO("quitting");
   _quit = 1;
   return bfromcstr("200 OK\n");
 }
@@ -54,9 +60,9 @@ static bstring read_msg(int s) {
   bstring msg = bfromcstr("");
   
   while(1) {
-    LOG("bef recv");
+    TRACE("bef recv");
     int rc = recv(s, buf, BUFSIZ, 0);
-    LOG("aft recv");
+    TRACE("aft recv");
     // error
     if(rc < 0)
       sys_err("recv failed");
@@ -64,7 +70,7 @@ static bstring read_msg(int s) {
     // append data
     buf[rc] = '\0';
     bcatcstr(msg, buf);
-    LOG(bdata(bformat("buf: [%s]\n", buf)));
+    TRACE(bdata(bformat("buf: [%s]", buf)));
 
     // if nothing, premature end-of-message
     if(rc == 0)
@@ -74,7 +80,7 @@ static bstring read_msg(int s) {
     if(buf[rc-1] == '\n')
       break;
   }
-  LOG("aft while");
+  TRACE("aft while");
   return msg;
 }
 
@@ -82,55 +88,57 @@ static struct Cmd* find_cmd(bstring request) {
   int i;
   for(i = 0; i < num_cmds; ++i) {
     struct Cmd* cmd = cmds + i;
-//    if(strncmp(cmd->name, bdata(request), strlen(cmd->name))==0)
     char* pc = bdata(request);
     if(strncmp(cmd->name, pc, strlen(cmd->name))==0)
       return cmd;
   }
-  LOG(bdata(bformat("command not found for request: [%s]", bdata(request))));
+  INFO(bdata(bformat("command not found for request: [%s]", bdata(request))));
   return NULL;
 }
 
 static void serve_request(int sock) {
-  LOG("beg serve_request");
+  TRACE("beg serve_request");
   bstring response = bfromcstr("200 OK\n");
 
   // read request
-  LOG("bef read_msg");
+  TRACE("bef read_msg");
   bstring request = read_msg(sock);
-  LOG(bdata(bformat("aft read_msg: data:\n%s", request->data)));
+  TRACE(bdata(bformat("aft read_msg: data:\n%s", request->data)));
 
   // find request handler
-  LOG("bef find_cmd");
+  TRACE("bef find_cmd");
   struct Cmd* cmd = find_cmd(request);
   if(cmd == NULL) 
     bassigncstr(response, "400 Bad Request\n");
+  DEBUG(bdata(bformat("found command: [%s]", cmd->name)));
 
   // call handler
   response = cmd->handler(request);
 
   // send response
-  LOG("bef send");
+  TRACE("bef send");
   int rc = send(sock, response->data, response->slen, 0);
-  LOG("aft send");
+  TRACE("aft send");
   if(rc < 0)
     sys_err("send() failed");
   
   bdestroy(request);
   bdestroy(response);
-  LOG("end serve_request");
+  TRACE("end serve_request");
 }
 
 int main(int argc, char** argv) {
+  log_set_level(LOG_LEVEL_TRACE);
   int rc;
-
+  INFO(bdata(bformat("beg main(): pid: %d", getpid())));
+  
   // just fire up a socket to listen and wait for commands
 
   // create
   int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); 
   if(s == -1) 
     sys_err("socket failed");
-  printf("socket created\n");
+  INFO("socket created");
 
   // bind
   struct sockaddr_in sa;
@@ -141,13 +149,13 @@ int main(int argc, char** argv) {
   rc = bind(s, (struct sockaddr*)&sa, sizeof(sa));
   if(rc < 0)
     sys_err("bind failed");
-  printf("socket bound\n");
+  INFO("socket bound");
 
   // listen
   rc = listen(s, MAX_PENDING);
   if(rc < 0)
     sys_err("listen failed");
-  printf("listening\n");
+  INFO("listening");
 
   while(!_quit) {
     // accept
@@ -157,10 +165,8 @@ int main(int argc, char** argv) {
     int t = accept(s, (struct sockaddr*) &ca, &ca_len);
     if(t < 0)
       sys_err("accept failed");
-    printf("accepted\n");
+    INFO("accepted");
 
-    // echo
-//    echo(t);
     // handle request
     serve_request(t);
   }
@@ -169,7 +175,8 @@ int main(int argc, char** argv) {
   rc = close(s);
   if(rc == -1)
     sys_err("close failed");
-  printf("socket closed\n");
-  return 0;
+  INFO("socket closed");
 
+  INFO("end main()");
+  return 0;
 }

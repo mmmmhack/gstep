@@ -5,7 +5,11 @@ CFLAGS += -Wall -g
 
 includes = -I$(bstrlib_dir)/include -I.
 libs = -L$(bstrlib_dir)/lib -lbstrlib
-objs = util.o 
+objs = util.o gdb.o
+#test_objs = test_time_sub.o
+
+#tests = test_time_sub
+tests = $(basename $(wildcard test_*.c))
 
 all: gserver gclient
 
@@ -23,3 +27,14 @@ gclient: gclient.o $(objs)
 clean:
 	-rm gserver gclient
 	-rm *.o
+
+.PHONY: test
+
+test: $(tests)
+	@for f in $(tests); \
+		do [ -x $$f ] && printf "%s: " $$f && ./$$f && printf " OK\n" || printf " FAIL\n"; \
+	done
+
+test_time_sub: test_time_sub.o util.o
+	$(CC) -o $@ $^
+

@@ -63,6 +63,72 @@ Initial command handling is working. Next: starting on gdb launch code. First, w
 check in to subversion.
 </p>
 
+<p>
+Later in the day, added more debugging, which is helpful, because currently I'm debugging
+an issue where the forked gserver process fails and exits on exec gdb (because of bad gdb_args
+I believe) and I need to find a good way for the parent process to determine whether or not the
+exec of the child process succeeds.
+</p>
+
+<p>
+One way that occurs to me, after a little thought, is for the parent process to wait around
+for the maximum time it would take for the faild child process to die and then check the
+state using 
+
+<h2>2011-06-13</h2>
+
+<p>
+This morning, a little coding, got some Makefile issues worked out and first unit
+test running to reveal that the algorithm for timeval subtraction is total bollocks.
+Not sure why, I got it from the doc for libc.
+</p>
+
+<p>
+No matter, I will just implement a simpler version of the algorithm.
+</p>
+
+<h2>2011-06-14</h2>
+
+<p>
+Another day, a little more coding time. I'm still sick. Will finish up unit tests for
+time_sub() and then get back to work on the gdb code.
+</p>
+
+<p>
+time_sub works, now I can catch the child process failure using waitpid():
+</p>
+<pre>
+[1308054296.547812] TRACE: gdb.c:39: bef waitpid
+[1308054296.548250] TRACE: gdb.c:41: aft waitpid: pid: 0, status: 0
+[1308054296.549084] TRACE: gdb.c:46: diff_time: 0, 70951
+[1308054296.549679] TRACE: gdb.c:39: bef waitpid
+[1308054296.550238] TRACE: gdb.c:41: aft waitpid: pid: 68731, status: 256
+[1308054296.550735] TRACE: gdb.c:46: diff_time: 0, 72598
+[1308054296.551327] TRACE: gdb.c:39: bef waitpid
+[1308054296.551770] TRACE: gdb.c:41: aft waitpid: pid: -1, status: 0
+[1308054296.552341] TRACE: gdb.c:46: diff_time: 0, 74203
+[1308054296.552794] TRACE: gdb.c:39: bef waitpid
+[1308054296.553266] TRACE: gdb.c:41: aft waitpid: pid: -1, status: 0
+[1308054296.553704] TRACE: gdb.c:46: diff_time: 0, 75570
+</p>
+
+<p>
+It takes a suprisingly long time to detect the failure, in my opinion, too
+close to the 100 msec limit, so I'll increase to 200 msec for now.
+</p>
+
+<p>
+In addition, I should probably always call waitpid() with WNOHANG before
+every access of the child process and make sure it returns 0 to check
+if the child process died at some point. Think I'll just create an 
+is_child_running() function.
+</p>
+
+<p>
+Got gdb running. Next: add code to terminate gdb when gserver exits (currently
+doesn't work).
+</p>
+
 </body>
 </html>
 
