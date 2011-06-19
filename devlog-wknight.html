@@ -129,6 +129,190 @@ Got gdb running. Next: add code to terminate gdb when gserver exits (currently
 doesn't work).
 </p>
 
+<p>
+After work, little coding, added kill, looks like it works:
+</p>
+<pre>
+mhackslab:gstep $ ./gclient start_gdb
+--- recvd from server:
+200 OK
+mhackslab:gstep $ sudo lsof -i -P | grep gdb
+gdb-i386- 72021  williamknight    3u  IPv4 0x5317270      0t0  TCP *:6667 (LISTEN)
+gdb-i386- 72021  williamknight    4u  IPv4 0x531766c      0t0  TCP localhost:6667-&gt;localhost:50021 (CLOSE_WAIT)
+mhackslab:gstep $ sudo lsof -i -P | grep 6667
+gserver   72012  williamknight    3u  IPv4 0x5317270      0t0  TCP *:6667 (LISTEN)
+gserver   72012  williamknight    4u  IPv4 0x531766c      0t0  TCP localhost:6667-&gt;localhost:50021 (CLOSE_WAIT)
+gdb-i386- 72021  williamknight    3u  IPv4 0x5317270      0t0  TCP *:6667 (LISTEN)
+gdb-i386- 72021  williamknight    4u  IPv4 0x531766c      0t0  TCP localhost:6667-&gt;localhost:50021 (CLOSE_WAIT)
+mhackslab:gstep $ ./gclient quit_gserver
+--- recvd from server:
+200 OK
+mhackslab:gstep $ sudo lsof -i -P | grep 6667
+mhackslab:gstep $ sudo lsof -i -P | grep gdb
+mhackslab:gstep $ 
+</pre>
+
+<h2>2011-06-15</h2>
+
+<p>
+Only a little time to code this morning, I want to make progress. Will try to finish up all the start/stop
+stuff and then move on to relaying actual gdb commands.
+</p>
+
+<p>
+Changed a bunch of return codes, now detection of child gdb startup is failing.
+Ah, duh, I changed the meaning of my return codes. Must be consistent and use ret==0 for success
+always.
+</p>
+
+<p>
+Hm, ok, that's fixed, but how we have a zombie:
+</p>
+<pre>
+mhackslab:gstep $ ./gclient quit_gdb
+--- recvd from server:
+200 OK
+mhackslab:gstep $ ps aux | grep gdb
+williamknight 72528   0.0  0.0   599820    460 s002  R+    7:38AM   0:00.00 grep gdb
+williamknight 72515   0.0  0.0        0      0 s001  Z+    7:38AM   0:00.00 (gdb-i386-apple-d)
+mhackslab:gstep $ 
+</pre>
+
+<h2>2011-06-16</h2>
+
+<p>
+Woke up very early this morning, but only got up at 5:10 am, so just a moderate amount of
+time for programming. Reading about process termination first.
+</p>
+
+<p>
+Getting there, I just remembered that a terminated child will become a zombie until its
+termination status is reported to the parent (I think). So one possibility is for the
+gserver app to wait for a bit after killing the gdb process, before quitting.
+</p>
+
+<p>
+Yeah, but, after reading this, why was it a zombie after the gserver process terminated
+(from linux programming interface):
+</p>
+<pre>
+On the other 
+hand, if the parent terminates without doing a wait(), then the init process adopts 
+the child and automatically performs a wait(), thus removing the zombie process 
+from the system. 
+</pre>
+
+<p>
+Uh, because you left the parent process still running, dumbkopf. Ok, this is could,
+I am finally understanding the nature of zombies and how to deal with them.
+</p>
+
+<h2>2011-06-17</h2>
+
+<p>
+Truly no time for code, but want to do a tiny bit anyhow.
+</p>
+
+<p>
+gdb shutdown is working.
+</p>
+
+<h2>2011-06-19</h2>
+
+<p>
+Sunday morning, back from Lymefest.
+</p>
+
+<p>
+Working on 'gdb cmd'. Looks like gdb i/o is working from the server end, now
+probs on the client. Adding more logging there.
+</p>
+
+<p>
+Identified the problem: current client code expects empty newline (as done
+by gserver responses which end with HTTP status). Need to consider how to
+handle responses from gdb process.
+</p>
+
+<p>
+Thoughts in the shower: the client should read a response from the server
+until the socket is closed. The HTTP status line should be sent first,
+followed by the output from the gdb process.
+</p>
+
+<p>
+Next, working on fixing detection of end of gdb output. When gdb outputs
+to console stdout and input is from keyboard stdin, an input of an empty
+line with only newline produces my current spec for gdb terminator:
+</p>
+<pre>
+...
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-apple-darwin".
+(gdb) 
+(gdb) 
+</pre>
+
+<p>
+However, when the input to gdb comes from one pipe and the output goes out
+another, here's what the same input produces in the output stream:
+</p>
+<pre>
+Type "show copying" to see the conditions.
+There is absolutely no warranty for GDB.  Type "show warranty" for details.
+This GDB was configured as "i386-apple-darwin".
+(gdb) (gdb) 
+</pre>
+
+<p>
+For now, I can easily fix this by dropping the leading '\n' from the gdb_terminator
+spec. And I won't worry about possible false terminator that could show up in dumping
+code because at some point I'll switch to the mi interpreter and detect the much
+less ambiguous output termination sequences such as:
+</p>
+<pre>
+show version
+&amp;"show version\n"
+~"GNU gdb 6.3.50-20050815 (Apple version gdb-966) (Tue Mar 10 02:43:13 UTC 2009)\n"
+~"Copyright 2004 Free Software Foundation, Inc.\n"
+~"GDB is free software, covered by the GNU General Public License, and you are\nwelcome to change it and/or distribute copies of it under certain conditions.\nType \"show copying\" to see the conditions.\nThere is absolutely no warranty for GDB.  Type \"show warranty\" for details.\n"
+~"This GDB was configured as \"i386-apple-darwin\".\n"
+^done
+(gdb) 
+</pre>
+
+<p>
+Next, I added code to close the socket on the server side, but the client side is
+still hanging in recv(). More to learn about sockets I guess...
+</p>
+
+<p>
+From the logs I can see that the client makes the recv call
+before the serve closes the socket, but I don't understand why
+it wouldn't return right after the server closes it.
+</p>
+
+<p>
+Next, I'll re-read the docs on recv().
+</p>
+
+<p>
+Did that, no clues. The socket shows as still connected by lsof
+</p>
+<pre>
+Google    73890 williamknight  123u  IPv4 0x614b66c      0t0  TCP mhackslab:64623-&gt;pz-in-f106.1e100.net:80 (ESTABLISHED)
+Google    73890 williamknight  124u  IPv4 0x685466c      0t0  TCP mhackslab:64624-&gt;pz-in-f106.1e100.net:80 (ESTABLISHED)
+gserver   75730 williamknight    3u  IPv4 0xc83b66c      0t0  TCP *:6667 (LISTEN)
+gclient   75736 williamknight    3u  IPv4 0xc841a68      0t0  TCP localhost:64495-&gt;localhost:6667 (ESTABLISHED)
+gdb-i386- 75737 williamknight    3u  IPv4 0xc83b66c      0t0  TCP *:6667 (LISTEN)
+gdb-i386- 75737 williamknight    4u  IPv4 0x6812a68      0t0  TCP localhost:6667-&gt;localhost:64495 (ESTABLISHED)
+</pre>
+
+<p>
+Next, will probably start logging more info on connected socket and ports.
+</p>
+
 </body>
 </html>
 

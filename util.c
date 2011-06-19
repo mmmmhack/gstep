@@ -44,7 +44,14 @@ void log_msg(int level, const char* s, const char* file, const int line) {
   FILE* fs = fopen(fname, "a");
   if(!fs)
     sys_err("fopen() failed");
-  fprintf(fs, "[%s] %s: %s:%d: %s\n", timestamp, log_level_desc(level), file, line, s);
+  // add errno detail if any for ERROR logging
+  char* err_pre = "";
+  char* err_detail = "";
+  if(level >= LOG_LEVEL_ERROR && errno) {
+    err_pre = " error detail: ";
+    err_detail = strerror(errno);
+  }
+  fprintf(fs, "[%s] %s: %s:%d: %s%s%s\n", timestamp, log_level_desc(level), file, line, s, err_pre, err_detail);
   fflush(fs);
   fclose(fs);
 }

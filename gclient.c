@@ -14,6 +14,7 @@ static int port_num = 6667;
 static const char* addr_ip = "127.0.0.1";
 
 int main(int argc, char** argv) {
+  log_set_level(LOG_LEVEL_TRACE);
   INFO(bdata(bformat("beg main(): pid: %d", getpid())));
 
   if(argc < 2) {
@@ -24,6 +25,7 @@ int main(int argc, char** argv) {
   int rc;
 
   // create socket
+  TRACE("bef socket");
   int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
   if(s < 0)
     sys_err("socket() failed");
@@ -37,6 +39,7 @@ int main(int argc, char** argv) {
   rc = inet_aton(addr_ip, &sa.sin_addr);
   if(rc == 0)
     sys_err("inet_aton() failed");
+  TRACE("bef connect");
   rc = connect(s, (struct sockaddr*) &sa, sizeof(sa));
   if(rc < 0)
     sys_err("connect() failed");
@@ -50,7 +53,7 @@ int main(int argc, char** argv) {
 //  size_t msg_len = strlen(msg);
   const char* msg = bdata(request);
   size_t msg_len = blength(request);
-  TRACE("bef send");
+  TRACE(bdata(bformat("bef send: msg: [%s]", msg)));
   rc = send(s, msg, msg_len, 0);
   TRACE("aft send");
   if(rc < 0)
@@ -62,22 +65,28 @@ int main(int argc, char** argv) {
   printf("--- recvd from server:\n");
   char buf[BUFSIZ];
   while(1) {
+    TRACE("bef recv");
     rc = recv(s, buf, sizeof(buf), 0);
+    TRACE("aft recv");
+
     // error
     if(rc < 0)
       sys_err("recv() failed");
     buf[rc] = '\0';
 
     // closed
-    if(rc == 0)
+    if(rc == 0) {
+      DEBUG("recv() returned 0, quitting recv loop"); 
       break;
+    }
+    DEBUG(bdata(bformat("recv returned %d bytes: [%s]", rc, buf)));
 
     // output 
     fputs(buf, stdout);
 
     // msg ends at newline
-    if(buf[rc-1] == '\n')
-      break;
+//    if(buf[rc-1] == '\n')
+//      break;
   } 
 
   // close socket

@@ -4,7 +4,7 @@
 
 pid_t gdb_pid();
 int gdb_start();
-void gdb_read();
-void gdb_write(const char* s);
-void gdb_kill();
+int gdb_read();
+int gdb_write(const char* s);
+int gdb_kill();
 #endif

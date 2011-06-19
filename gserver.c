@@ -12,6 +12,15 @@
 #include "util.h"
 #include "gdb.h"
 
+#define C200_OK "200 OK\n"
+#define C400_BAD_REQ "400 Bad Request\n"
+#define C501_NOT_IMPL "501 Not Implemented\n"
+#define C502_GDB_FAIL_STOP "502 Gdb Failed To Stop\n"
+#define C503_GDB_FAIL_START "503 Gdb Failed To Start\n"
+#define C504_GDB_NOT_RUNNING "504 Gdb Not Running\n"
+#define C505_FAILED_SEND_GDB_CMD "505 Failed Sending Gdb Command\n"
+#define C506_FAILED_RECV_GDB_RESP "506 Failed Receiving Gdb Response\n"
+
 static in_port_t port_num = 6667;
 static const int MAX_PENDING = 0;
 static int _quit = 0;
@@ -23,39 +32,100 @@ struct Cmd {
   CmdFunc handler;
 };
 
-bstring start_gdb(bstring req) {
-//  return bfromcstr("501 Not Implemented\n");
-  int rc = gdb_start();
-  if(rc) {
-    return bfromcstr("502 Gdb Failed To Start\n");
-  }
-  return bfromcstr("200 OK\n");
-}
-
-bstring quit_gdb(bstring req) {
-  return bfromcstr("501 Not Implemented\n");
-}
-
-void kill_gdb() {
-  gdb_kill();  
-}
-
-bstring quit_gserv(bstring req) {
-  kill_gdb();
-  INFO("quitting");
-  _quit = 1;
-  return bfromcstr("200 OK\n");
-}
-
+bstring start_gdb(bstring req);
+bstring gdb_cmd(bstring req);
+bstring quit_gdb(bstring req);
+bstring quit_gserv(bstring req);
 static struct Cmd cmds[] = {
   {"start_gdb", start_gdb, },
+  {"gdb_cmd", gdb_cmd, },
   {"quit_gdb", quit_gdb, },
   {"quit_gserv", quit_gserv, },
 };
 static const int num_cmds = sizeof(cmds) / sizeof(cmds[0]);
 
-// read until a newline is recvd
-static bstring read_msg(int s) {
+void parse_options(int argc, char** argv) {
+}
+
+// cmd-handler: creates the child gdb process
+bstring start_gdb(bstring req) {
+  bstring bret = bfromcstr(C200_OK);
+  int rc;
+
+  // stop first if running
+  if(gdb_pid() != -1) {
+    rc = gdb_kill(); 
+    if(rc)
+      return bfromcstr(C502_GDB_FAIL_STOP); 
+  }
+  rc = gdb_start();
+  if(rc)
+    return bfromcstr(C503_GDB_FAIL_START);
+  return bret;
+}
+
+// cmd-handler: sends a command to the child gdb process
+bstring gdb_cmd(bstring req) {
+  TRACE("beg gdb_cmd()");
+  TRACE(bdata(bformat("req: [%s]", req->data)));
+  bstring bret = bfromcstr(C200_OK);
+  int rc;
+
+  // make sure gdb is running
+  if(gdb_pid() == -1) {
+    return bfromcstr(C504_GDB_NOT_RUNNING); 
+  }
+  // send cmd
+  bstring cmd = bmidstr(req, 7, req->slen);
+  TRACE("bef gdb_write");
+  rc = gdb_write(bdata(cmd));
+  TRACE(bdata(bformat("aft gdb_write: rc: %d", rc)));
+  if(rc)
+    return bfromcstr(C505_FAILED_SEND_GDB_CMD);
+  // read response
+  bstring gdb_response;
+  TRACE("BEF gdb_read");
+  rc = gdb_read(&gdb_response);
+  TRACE("AFT gdb_read");
+  TRACE(bdata(bformat("rc: %d", rc)));
+  if(rc)
+    return bfromcstr(C506_FAILED_RECV_GDB_RESP);
+  // concat gdb response to gserver response
+  bconcat(bret, gdb_response);
+
+  TRACE("end gdb_cmd()");
+  return bret;
+}
+
+// cmd-handler: terminates the child gdb process
+bstring quit_gdb(bstring req) {
+  bstring bret = bfromcstr(C200_OK);
+  int rc;
+  if(gdb_pid() == -1)
+    return bfromcstr(C504_GDB_NOT_RUNNING);
+  rc = gdb_kill(); 
+  if(rc)
+    return bfromcstr(C502_GDB_FAIL_STOP); 
+  return bret;
+}
+
+// cmd-handler: terminates the gserver program
+bstring quit_gserv(bstring req) {
+  bstring bret = bfromcstr(C200_OK);
+  // stop gdb if running
+  if(gdb_pid() != -1) {
+    int rc = gdb_kill();
+    if(rc)
+      bassigncstr(bret, C502_GDB_FAIL_STOP);
+  }
+  INFO("quitting");
+  _quit = 1;
+  return bret;
+}
+
+// reads a request string from gclient: reads from socket until a newline is recvd
+static bstring read_msg_from_client(int s) {
+  TRACE("beg read_msg_from_client()");
   char buf[BUFSIZ];
   bstring msg = bfromcstr("");
   
@@ -81,6 +151,7 @@ static bstring read_msg(int s) {
       break;
   }
   TRACE("aft while");
+  TRACE("end read_msg_from_client()");
   return msg;
 }
 
@@ -97,45 +168,65 @@ static struct Cmd* find_cmd(bstring request) {
 }
 
 static void serve_request(int sock) {
-  TRACE("beg serve_request");
+  TRACE("beg serve_request()");
   bstring response = bfromcstr("200 OK\n");
 
   // read request
-  TRACE("bef read_msg");
-  bstring request = read_msg(sock);
-  TRACE(bdata(bformat("aft read_msg: data:\n%s", request->data)));
+  TRACE("bef read_msg_from_client");
+  bstring request = read_msg_from_client(sock);
+  TRACE("aft read_msg_from_client");
+  TRACE(bdata(bformat("client request: [%s]", request->data)));
 
   // find request handler
   TRACE("bef find_cmd");
   struct Cmd* cmd = find_cmd(request);
+  TRACE("aft find_cmd");
   if(cmd == NULL) 
     bassigncstr(response, "400 Bad Request\n");
-  DEBUG(bdata(bformat("found command: [%s]", cmd->name)));
+  else {
+    DEBUG(bdata(bformat("found command: [%s]", cmd->name)));
 
-  // call handler
-  response = cmd->handler(request);
+    // call handler
+    TRACE("bef call handler");
+    response = cmd->handler(request);
+    TRACE("aft call handler");
+  }
 
   // send response
   TRACE("bef send");
   int rc = send(sock, response->data, response->slen, 0);
   TRACE("aft send");
   if(rc < 0)
-    sys_err("send() failed");
+    sys_err("send failed");
   
+  // close socket
+  TRACE("bef close accept socket");
+  rc = close(sock);
+  TRACE("aft close accept socket");
+  TRACE(bdata(bformat("rc: %d", rc)));
+  if(rc)
+    sys_err("close socket failed");
+
   bdestroy(request);
   bdestroy(response);
-  TRACE("end serve_request");
+  TRACE("end serve_request()");
 }
 
 int main(int argc, char** argv) {
+  TRACE("beg main");
   log_set_level(LOG_LEVEL_TRACE);
   int rc;
-  INFO(bdata(bformat("beg main(): pid: %d", getpid())));
+  INFO(bdata(bformat("gserver pid: %d", getpid())));
   
+  // parse options
+  parse_options(argc, argv);
+
   // just fire up a socket to listen and wait for commands
 
   // create
+  TRACE("bef socket");
   int s = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); 
+  TRACE("aft socket");
   if(s == -1) 
     sys_err("socket failed");
   INFO("socket created");
@@ -162,7 +253,9 @@ int main(int argc, char** argv) {
     struct sockaddr_in ca;
     memset(&ca, 0, sizeof(ca));
     socklen_t ca_len = sizeof(ca);
+    TRACE("bef accept");
     int t = accept(s, (struct sockaddr*) &ca, &ca_len);
+    TRACE("aft accept");
     if(t < 0)
       sys_err("accept failed");
     INFO("accepted");
@@ -172,11 +265,13 @@ int main(int argc, char** argv) {
   }
 
   // close
+  TRACE("bef close listen socket");
   rc = close(s);
+  TRACE("aft close listen socket");
   if(rc == -1)
     sys_err("close failed");
   INFO("socket closed");
 
-  INFO("end main()");
+  TRACE("end main()");
   return 0;
 }
