@@ -33,7 +33,9 @@ int main(int argc, char** argv) {
   // connect
   struct sockaddr_in sa;
   memset(&sa, 0, sizeof(sa));
+#ifdef APPLE
   sa.sin_len = sizeof(sa);
+#endif
   sa.sin_family = AF_INET;
   sa.sin_port = htons(port_num);
   rc = inet_aton(addr_ip, &sa.sin_addr);

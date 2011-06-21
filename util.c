@@ -36,7 +36,11 @@ void log_msg(int level, const char* s, const char* file, const int line) {
   struct timeval tv;
   gettimeofday(&tv, NULL);
   char timestamp[128];
+#ifdef APPLE
   sprintf(timestamp, "%ld.%06d", tv.tv_sec, tv.tv_usec);
+#else
+  sprintf(timestamp, "%ld.%06ld", tv.tv_sec, tv.tv_usec);
+#endif
 
   // TODO: check for and make log dir
   pid_t pid = getpid();  
