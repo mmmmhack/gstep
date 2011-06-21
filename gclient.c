@@ -48,6 +48,11 @@ int main(int argc, char** argv) {
 
   // send
   bstring request = bfromcstr(argv[1]);
+	int i;
+	for(i = 2; i < argc; ++i) {
+		bcatcstr(request, " ");
+		bcatcstr(request, argv[i]);
+	}
   bcatcstr(request, "\n");   // requests must be terminated by a newline
   const char* msg = bdata(request);
   size_t msg_len = blength(request);

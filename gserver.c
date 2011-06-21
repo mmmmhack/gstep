@@ -64,6 +64,18 @@ static bstring start_gdb(bstring req) {
   rc = gdb_start();
   if(rc)
     return bfromcstr(C503_GDB_FAIL_START);
+
+	// read initial text from gdb
+  bstring gdb_response = bfromcstr("");
+  TRACE("BEF gdb_read");
+  rc = gdb_read(&gdb_response);
+  TRACE("AFT gdb_read");
+  TRACE(bdata(bformat("rc: %d", rc)));
+  if(rc)
+    return bfromcstr(C506_FAILED_RECV_GDB_RESP);
+  // concat gdb response to gserver response
+  bconcat(bret, gdb_response);
+
   return bret;
 }
 

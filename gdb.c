@@ -143,7 +143,14 @@ int gdb_start() {
     }
     TRACE("aft stdio pipe switch");
 
-    // close socket descriptor
+    // close socket descriptors
+    TRACE("bef servsock_close_listen_socket");
+    rc = servsock_close_listen_socket();
+    TRACE("aft servsock_close_listen_socket");
+ 		if(rc < 0) {
+			ERROR("servsock_close_listen_socket failed");
+      return -1;
+    }
     TRACE("bef servsock_close_accept_socket");
     rc = servsock_close_accept_socket();
     TRACE("aft servsock_close_accept_socket");

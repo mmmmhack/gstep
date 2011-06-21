@@ -1,5 +1,6 @@
 #include <sys/types.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
 #include <time.h>
@@ -22,6 +23,7 @@ static const char* log_level_desc(int level) {
 }
 
 static int _log_level = LOG_LEVEL_INFO;
+static char _log_dir[FILENAME_MAX] = "";
 
 int log_level() {return _log_level;}
 void log_set_level(int level) {_log_level = level;}
@@ -30,6 +32,39 @@ void sys_err(const char* msg) {
   ERROR(msg);
   perror(msg);
   exit(1);
+}
+
+static const char* log_dir() {
+	if(*_log_dir)
+		return _log_dir;
+	const char* home_dir = getenv("HOME");
+	if(home_dir == NULL || strlen(home_dir) > FILENAME_MAX-20) {
+		fprintf(stderr, "bad home_dir\n");
+		return NULL;
+	}
+
+	// build log dir path
+	char new_log_dir[FILENAME_MAX];
+	sprintf(new_log_dir, "%s/log/", home_dir);
+
+	// check already exist
+	struct stat st;
+	int rc = stat(new_log_dir, &st);
+
+	// if not exist, attempt to create
+	if(rc) {
+		mode_t new_mode = S_IRWXU;
+		rc = mkdir(new_log_dir, new_mode);
+		if(rc) {
+			fprintf(stderr, "mkdir(%s) failed\n", new_log_dir);
+			perror("error detail");
+			return NULL;
+		}
+	}
+
+	// set module var
+	strcpy(_log_dir, new_log_dir);
+	return _log_dir;
 }
 
 void log_msg(int level, const char* s, const char* file, const int line) {
@@ -43,9 +78,14 @@ void log_msg(int level, const char* s, const char* file, const int line) {
 #endif
 
   // TODO: check for and make log dir
+	const char* log_path = log_dir();
+	if(!log_path) {
+		fprintf(stderr, "Error: no log dir, logging is disabled.\n");
+		return;
+	}
   pid_t pid = getpid();  
   char fname[128];
-  sprintf(fname, "log/%d.log", pid);
+  sprintf(fname, "%s%d.log", log_path, pid);
   FILE* fs = fopen(fname, "a");
   if(!fs) {
     fprintf(stderr, "%s:%d: fopen() failed\n", __FILE__, __LINE__);
