@@ -11,6 +11,7 @@
 #include "bstrlib.h"
 
 #include "util.h"
+#include "servsock.h"
 #include "gdb.h"
 
 static int pipe0[2];
@@ -140,6 +141,15 @@ int gdb_start() {
       return -1;
     }
     TRACE("aft stdio pipe switch");
+
+    // close socket descriptor
+    TRACE("bef servsock_close_accept_socket");
+    rc = servsock_close_accept_socket();
+    TRACE("aft servsock_close_accept_socket");
+ 		if(rc < 0) {
+			ERROR("servsock_close_accept_socket failed");
+      return -1;
+    }
 
 		// switch to target prog
     bstring gdb_args_str = bfromcstr("");

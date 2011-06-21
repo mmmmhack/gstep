@@ -45,12 +45,8 @@ int main(int argc, char** argv) {
     sys_err("connect() failed");
 
   // send
-//  char* msg = "howdy partner\n";
-//  const char* request = argv[1];
   bstring request = bfromcstr(argv[1]);
   bcatcstr(request, "\n");   // requests must be terminated by a newline
-//  const char* msg = request;
-//  size_t msg_len = strlen(msg);
   const char* msg = bdata(request);
   size_t msg_len = blength(request);
   TRACE(bdata(bformat("bef send: msg: [%s]", msg)));
@@ -83,11 +79,9 @@ int main(int argc, char** argv) {
 
     // output 
     fputs(buf, stdout);
-
-    // msg ends at newline
-//    if(buf[rc-1] == '\n')
-//      break;
   } 
+  // add a final newline for cleaner output on cmd-line
+  fputs("\n", stdout);
 
   // close socket
   TRACE("bef close()");

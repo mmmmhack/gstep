@@ -313,6 +313,97 @@ gdb-i386- 75737 williamknight    4u  IPv4 0x6812a68      0t0  TCP localhost:6667
 Next, will probably start logging more info on connected socket and ports.
 </p>
 
+<p>
+Reading and thinking - what I'm reading tells me that closing the socker on the server side should cause
+a 0 to be returned to the client in a recv() call. Is closing the 'listen' socket required? That doesn't
+seem to make any sense.
+</p>
+
+<p>
+I may start making calls to getsockopt() and investigating the current values I find.
+</p>
+
+<p>
+Another thing I might do is investigate the current behavior in Linux and see if it's the same.
+</p>
+
+<p>
+Maybe I have to do some kind of flush() call?
+</p>
+
+<p>
+Later, more read. Everything I'm reading says that 'close' should shut the damn thing down. Will
+try 'shutdown()' instead. I'm thinking that after close, the server side state should definitely
+be 'FIN_WAIT_...', not 'ESTABLISHED' like it's currently showing:
+</p>
+<pre>
+gserver   76902 williamknight    3u  IPv4 0x5345e64      0t0  TCP *:6667 (LISTEN)
+gclient   76909 williamknight    3u  IPv4 0x533de64      0t0  TCP localhost:50885-&gt;localhost:6667 (ESTABLISHED)
+gdb-i386- 76910 williamknight    3u  IPv4 0x5345e64      0t0  TCP *:6667 (LISTEN)
+gdb-i386- 76910 williamknight    4u  IPv4 0x533d270      0t0  TCP localhost:6667-&gt;localhost:50885 (ESTABLISHED)
+</pre>
+
+<p>
+Wait, maybe that's the answer? Is the child gdb process inheriting the ESTABLISHED socket connections
+and preventing the close somehow? I can understand it inheriting the 'listening' socket, but 
+it doesn't make sense to me right now that it inherits the 'accepted' socket. Think I might add
+a debug command 'client wait' where the server will respond with nothing and the client will
+wait for a response, just to take a look at the state of the connections in that situation.
+</p>
+
+<p>
+w/o gdb running:
+</p>
+<pre>
+gserver   77139 williamknight    3u  IPv4 0x5658e64      0t0  TCP *:6667 (LISTEN)
+gserver   77139 williamknight    4u  IPv4 0x5658270      0t0  TCP localhost:6667-&gt;localhost:52409 (ESTABLISHED)
+gclient   77146 williamknight    3u  IPv4 0xc834a68      0t0  TCP localhost:52409-&gt;localhost:6667 (ESTABLISHED)
+</pre>
+
+<p>
+w/ gdb running:
+</p>
+<pre>
+gserver   77159 williamknight    3u  IPv4 0x5658e64      0t0  TCP *:6667 (LISTEN)
+gserver   77159 williamknight    4u  IPv4 0x5592e64      0t0  TCP localhost:6667-&gt;localhost:52412 (ESTABLISHED)
+gclient   77163 williamknight    3u  IPv4 0x5658270      0t0  TCP localhost:52412-&gt;localhost:6667 (ESTABLISHED)
+gdb-i386- 77164 williamknight    3u  IPv4 0x5658e64      0t0  TCP *:6667 (LISTEN)
+gdb-i386- 77164 williamknight    4u  IPv4 0x5592e64      0t0  TCP localhost:6667-&gt;localhost:52412 (ESTABLISHED)
+</pre>
+
+<h2>2011-06-20</h2>
+
+<p>
+Little monday-morning coding. Wrote a test server/client echo test that confirmed that closing
+the 'accept' socket on server side shuts down client receive. Next, need to combine that with
+creating a child process.
+</p>
+
+<p>
+Excellent, forked a child process after the accept but before the echo, confirmed that it holds
+the client in recv() call even after the parent process closes both sockets. So that's it.
+</p>
+
+<h2>2011-06-21</h2>
+
+<p>
+Up early, will try to get this thing working. Will just start by closing the socket fd in
+any gdb forked process that occurs.
+</p>
+
+<p>
+Did that, I believe I also need to close the accept socket.
+</p>
+
+<p>
+That did it, I'm finally getting output from gdb to the client!
+</p>
+
+<p>
+Need a little more cleanup on the server side (closing sockets), and then next:
+start passing actual gdb_cmd args to gdb.
+</p>
+
 </body>
 </html>
 

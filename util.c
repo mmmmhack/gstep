@@ -38,12 +38,15 @@ void log_msg(int level, const char* s, const char* file, const int line) {
   char timestamp[128];
   sprintf(timestamp, "%ld.%06d", tv.tv_sec, tv.tv_usec);
 
+  // TODO: check for and make log dir
   pid_t pid = getpid();  
   char fname[128];
   sprintf(fname, "log/%d.log", pid);
   FILE* fs = fopen(fname, "a");
-  if(!fs)
-    sys_err("fopen() failed");
+  if(!fs) {
+    fprintf(stderr, "%s:%d: fopen() failed\n", __FILE__, __LINE__);
+    exit(1);
+  }
   // add errno detail if any for ERROR logging
   char* err_pre = "";
   char* err_detail = "";

@@ -5,10 +5,8 @@ CFLAGS += -Wall -g
 
 includes = -I$(bstrlib_dir)/include -I.
 libs = -L$(bstrlib_dir)/lib -lbstrlib
-objs = util.o gdb.o
-#test_objs = test_time_sub.o
+objs = util.o gdb.o servsock.o
 
-#tests = test_time_sub
 tests = $(basename $(wildcard test_*.c))
 
 all: gserver gclient

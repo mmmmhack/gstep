@@ -10,6 +10,7 @@
 
 #include "bstrlib.h"
 #include "util.h"
+#include "servsock.h"
 #include "gdb.h"
 
 #define C200_OK "200 OK\n"
@@ -32,23 +33,25 @@ struct Cmd {
   CmdFunc handler;
 };
 
-bstring start_gdb(bstring req);
-bstring gdb_cmd(bstring req);
-bstring quit_gdb(bstring req);
-bstring quit_gserv(bstring req);
+static bstring start_gdb(bstring req);
+static bstring gdb_cmd(bstring req);
+static bstring quit_gdb(bstring req);
+static bstring quit_gserv(bstring req);
+static bstring debug_no_respond(bstring req);
 static struct Cmd cmds[] = {
   {"start_gdb", start_gdb, },
   {"gdb_cmd", gdb_cmd, },
   {"quit_gdb", quit_gdb, },
   {"quit_gserv", quit_gserv, },
+  {"debug_no_respond", debug_no_respond, },
 };
 static const int num_cmds = sizeof(cmds) / sizeof(cmds[0]);
 
-void parse_options(int argc, char** argv) {
+static void parse_options(int argc, char** argv) {
 }
 
 // cmd-handler: creates the child gdb process
-bstring start_gdb(bstring req) {
+static bstring start_gdb(bstring req) {
   bstring bret = bfromcstr(C200_OK);
   int rc;
 
@@ -65,7 +68,7 @@ bstring start_gdb(bstring req) {
 }
 
 // cmd-handler: sends a command to the child gdb process
-bstring gdb_cmd(bstring req) {
+static bstring gdb_cmd(bstring req) {
   TRACE("beg gdb_cmd()");
   TRACE(bdata(bformat("req: [%s]", req->data)));
   bstring bret = bfromcstr(C200_OK);
@@ -83,7 +86,7 @@ bstring gdb_cmd(bstring req) {
   if(rc)
     return bfromcstr(C505_FAILED_SEND_GDB_CMD);
   // read response
-  bstring gdb_response;
+  bstring gdb_response = bfromcstr("");
   TRACE("BEF gdb_read");
   rc = gdb_read(&gdb_response);
   TRACE("AFT gdb_read");
@@ -98,7 +101,7 @@ bstring gdb_cmd(bstring req) {
 }
 
 // cmd-handler: terminates the child gdb process
-bstring quit_gdb(bstring req) {
+static bstring quit_gdb(bstring req) {
   bstring bret = bfromcstr(C200_OK);
   int rc;
   if(gdb_pid() == -1)
@@ -110,7 +113,7 @@ bstring quit_gdb(bstring req) {
 }
 
 // cmd-handler: terminates the gserver program
-bstring quit_gserv(bstring req) {
+static bstring quit_gserv(bstring req) {
   bstring bret = bfromcstr(C200_OK);
   // stop gdb if running
   if(gdb_pid() != -1) {
@@ -121,6 +124,13 @@ bstring quit_gserv(bstring req) {
   INFO("quitting");
   _quit = 1;
   return bret;
+}
+
+// cmd-handler: debug handler where the server never responds to the client
+static bstring debug_no_respond(bstring req) {
+  TRACE("beg debug_no_respond");
+  TRACE("end debug_no_respond");
+  return bfromcstr("do not respond");
 }
 
 // reads a request string from gclient: reads from socket until a newline is recvd
@@ -192,10 +202,20 @@ static void serve_request(int sock) {
     TRACE("aft call handler");
   }
 
+  // special case: no response
+  if(!strcmp((char*)request->data, "debug_no_respond")) {
+    TRACE("not sending a response for this request");
+    bdestroy(request);
+    bdestroy(response);
+    return;
+  }
+
   // send response
+  TRACE(bdata(bformat("sending %d bytes: [%s]", response->slen, response->data)));
   TRACE("bef send");
   int rc = send(sock, response->data, response->slen, 0);
   TRACE("aft send");
+  TRACE(bdata(bformat("rc: %d", rc)));
   if(rc < 0)
     sys_err("send failed");
   
@@ -229,7 +249,9 @@ int main(int argc, char** argv) {
   TRACE("aft socket");
   if(s == -1) 
     sys_err("socket failed");
-  INFO("socket created");
+  INFO(bdata(bformat("socket %d created", socket)));
+  // save socket value for access by forked processes
+  servsock_set_listen_socket(s);
 
   // bind
   struct sockaddr_in sa;
@@ -259,6 +281,7 @@ int main(int argc, char** argv) {
     if(t < 0)
       sys_err("accept failed");
     INFO("accepted");
+    servsock_set_accept_socket(t);
 
     // handle request
     serve_request(t);
