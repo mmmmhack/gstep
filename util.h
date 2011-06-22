@@ -28,4 +28,5 @@ struct timeval time_now();
 struct timeval time_sub(const struct timeval* x, const struct timeval* y);
 int time_greater(const struct timeval* x, const struct timeval* y);
 void time_sleep(const struct timeval* t);
+const char* ctime_now();
 #endif

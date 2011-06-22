@@ -245,11 +245,12 @@ static void serve_request(int sock) {
 }
 
 int main(int argc, char** argv) {
-  TRACE("beg main");
   log_set_level(LOG_LEVEL_TRACE);
-  int rc;
-  INFO(bdata(bformat("gserver pid: %d", getpid())));
+  TRACE("beg main");
+  INFO(bdata(bformat("gserver started %s, pid: %d", ctime_now(), getpid())));
   
+  int rc;
+
   // parse options
   parse_options(argc, argv);
 

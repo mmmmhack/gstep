@@ -24,6 +24,7 @@ static const char* log_level_desc(int level) {
 
 static int _log_level = LOG_LEVEL_INFO;
 static char _log_dir[FILENAME_MAX] = "";
+static char _ctime_now[24];
 
 int log_level() {return _log_level;}
 void log_set_level(int level) {_log_level = level;}
@@ -170,5 +171,14 @@ int time_greater(const struct timeval* x, const struct timeval* y) {
 void time_sleep(const struct timeval* t) {
   struct timespec ts = {t->tv_sec, t->tv_usec * 1000};
   nanosleep(&ts, NULL);
+}
+
+const char* ctime_now() {
+	time_t t;
+	time(&t);
+	char* now_time = ctime(&t);
+	strcpy(_ctime_now, now_time);
+	_ctime_now[24] = '\0';
+	return _ctime_now;
 }
 

@@ -15,7 +15,8 @@ static const char* addr_ip = "127.0.0.1";
 
 int main(int argc, char** argv) {
   log_set_level(LOG_LEVEL_TRACE);
-  INFO(bdata(bformat("beg main(): pid: %d", getpid())));
+  TRACE("beg main()");
+  INFO(bdata(bformat("gclient started %s, pid: %d", ctime_now(), getpid())));
 
   if(argc < 2) {
     fprintf(stderr, "missing request arg\n");
@@ -65,7 +66,7 @@ int main(int argc, char** argv) {
     sys_err("send() incomplete");
 
   // receive
-  printf("--- recvd from server:\n");
+//  printf("--- recvd from server:\n");
   char buf[BUFSIZ];
   while(1) {
     TRACE("bef recv");
@@ -84,8 +85,13 @@ int main(int argc, char** argv) {
     }
     DEBUG(bdata(bformat("recv returned %d bytes: [%s]", rc, buf)));
 
+		// strip '200 OK\n' from buf (only need to report errors)
+		char* out = buf;
+		if(!strncmp(out, "200 OK\n", 7))
+			out += 7;
+
     // output 
-    fputs(buf, stdout);
+    fputs(out, stdout);
   } 
   // add a final newline for cleaner output on cmd-line
   fputs("\n", stdout);
@@ -97,5 +103,6 @@ int main(int argc, char** argv) {
   if(rc < 0)
     sys_err("close socket failed");
   
+  TRACE("end main()");
   return 0;
 }

@@ -135,6 +135,12 @@ int gdb_start() {
 			ERROR("dup2 stdout failed");
       return -1;
     }
+		// switch stderr to pipe0
+		rc  = dup2(pipe0[1], STDERR_FILENO);
+		if(rc < 0) {
+			ERROR("dup2 stderr failed");
+      return -1;
+    }
 		// switch stdin to pipe1
 		rc  = dup2(pipe1[0], STDIN_FILENO);
 		if(rc < 0) {

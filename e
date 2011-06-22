@@ -1,1 +1,1 @@
-vim ~/tmp/.buffer-list.txt ~/tmp/.shell-out.txt devlog-wknight.html -c ":so load-files.vim"
+vim .buffer-list.txt .shell-out.txt devlog-wknight.html -c ":so load-files.vim"
