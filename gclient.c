@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
   // connect
   struct sockaddr_in sa;
   memset(&sa, 0, sizeof(sa));
-#ifdef APPLE
+#ifdef OS_DARWIN
   sa.sin_len = sizeof(sa);
 #endif
   sa.sin_family = AF_INET;

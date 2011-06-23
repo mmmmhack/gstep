@@ -2,7 +2,9 @@ bstrlib_dir = $(HOME)/swtools/text/bstrlib
 
 CC = gcc
 CFLAGS += -Wall -g
+OS = OS_$(shell uname -s | tr '[:lower:]' '[:upper:]')
 
+defines += -D$(OS)
 includes = -I$(bstrlib_dir)/include -I.
 libs = -L$(bstrlib_dir)/lib -lbstrlib
 objs = util.o gdb.o servsock.o
@@ -18,7 +20,7 @@ gclient: gclient.o $(objs)
 	$(CC) $(CFLAGS) -o $@ gclient.o $(objs) $(libs)
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ $(includes) -c $<
+	$(CC) $(CFLAGS) -o $@ $(defines) $(includes) -c $<
 
 #.PRECIOUS: %.o
 
