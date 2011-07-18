@@ -437,6 +437,28 @@ Debugging mail on mac, looks like similar problem to deb6, so will debug that to
 </p>
 
 
+check out: "The Book of IMAP: Building a Mail Server with Courier and Cyrus"
+
+<h2>2011-07-09</h2>
+
+<p>
+On vacation - hallellujah. Hacking on BosWars and learning scons, I want to get
+gstep to work with pdb as well as gdb. Since it's such a simple project, I'm
+inclined to just fork and dup code at this point, maybe consolidate/share later.
+</p>
+
+<p>
+Actually, could keep single project, just add pserver.c and pclient.c. Simple.
+</p>
+
+<p>
+And a more general approach that I'll take with pserver is to ditch the extra
+commands that start and stop the debugger. Instead, the user specifies
+the command-line arg of the process to launch. This will allow me to debug
+scons using its debug flag, as I'm not sure at this time how to correctly
+load and debug it from python on the command-line.
+</p>
+
 </body>
 </html>
 

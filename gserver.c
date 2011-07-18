@@ -1,4 +1,4 @@
-// gserv.c  : gdb server
+// gserver.c  : gdb server
 
 #include <sys/types.h>
 #include <sys/socket.h>
