@@ -1,0 +1,127 @@
+
+NAME
+      gserver - gdb server program
+
+SYNOPSIS
+      gserver [-h] [-v]
+
+DESCRIPTION
+      The purpose of gserver is to receive a request string from the gclient
+      program through a socket connection and relay it to a gdb child process.
+      gserver then reads the response from gdb and sends it back to the gclient
+      program.
+
+      The intended use of gserver in conjunction with gclient is to provide a 
+      debugging interface from within a vim session, similar to other tools such 
+      as pyclewn.
+
+SETUP
+      The gserver program listens and accepts socket connections on port 6667. At 
+      this time, there is no means for specifying a different port address, but
+      an option for this will be added in a subsequent version.
+
+GENERAL
+      The gserver program continually listens for and processes requests from 
+      the socket connection.  Each request string consists of a command
+      name, and in some cases followed by an argument.
+
+      Below is the list of commands and resulting actions:
+
+        start_gdb
+          Starts a gdb child process, terminating any running gdb process first.
+
+        gdb_cmd COMMAND_STRING
+          Sends COMMAND_STRING to the gdb child process and reads a response.
+
+        quit_gdb
+          Terminates any running gdb process
+
+        quit_gserv
+          Exists the gserver program, terminating any running gdb process first.
+
+        debug_no_respond
+          Receives the command from the gclient process but doesn't do any
+          subsequent action.
+
+      Except for the 'debug_no_respond' command, all other commands will result
+      in a response sent to the gclient program.  If the command is processed
+      successfully, the response "200 OK\n" is sent, otherwise an error
+      response is sent. Below are the following response codes and
+      descriptions:
+
+          200 OK
+          400 Bad Request
+          501 Not Implemented
+          502 Gdb Failed To Stop
+          503 Gdb Failed To Start
+          504 Gdb Not Running
+          505 Failed Sending Gdb Command
+          506 Failed Receiving Gdb Response
+
+EXAMPLES
+      Below is a typical session occurring in 2 different terminals. First the gserver
+      is started:
+
+        mhackslab:gstep $ ./gserver
+
+      In a second terminal, 5 gclient commands are given and the resulting output from gdb is
+      shown:
+
+        --- Start gdb:
+
+          mhackslab:gstep $ ./gclient start_gdb
+          GNU gdb 6.3.50-20050815 (Apple version gdb-966) (Tue Mar 10 02:43:13 UTC 2009)
+          Copyright 2004 Free Software Foundation, Inc.
+          GDB is free software, covered by the GNU General Public License, and you are
+          welcome to change it and/or distribute copies of it under certain conditions.
+          Type "show copying" to see the conditions.
+          There is absolutely no warranty for GDB.  Type "show warranty" for details.
+          This GDB was configured as "i386-apple-darwin".
+          (gdb) 
+          mhackslab:gstep $ 
+
+        --- Load the program to be debugged:
+
+          mhackslab:gstep $ ./gclient gdb_cmd file howdy
+          Reading symbols for shared libraries ... done
+          Reading symbols from /Users/williamknight/proj/modwest/util/gstep/howdy...Reading symbols from /Users/williamknight/proj/modwest/util/gstep/howdy.dSYM/Contents/Resources/DWARF/howdy...done.
+          done.
+          (gdb) 
+          mhackslab:gstep $ 
+
+        --- Start debugging the program:
+
+          mhackslab:gstep $ ./gclient gdb_cmd start
+          Breakpoint 1 at 0x1fcb: file howdy.c, line 4.
+          Starting program: /Users/williamknight/proj/modwest/util/gstep/howdy 
+          Reading symbols for shared libraries ++. done
+
+          Breakpoint 1, main () at howdy.c:4
+          4   const char* msg = "howdy";
+          (gdb) 
+          mhackslab:gstep $ 
+
+        --- Step one instruction:
+
+          mhackslab:gstep $ ./gclient gdb_cmd step
+          5   int rc = printf("%s\n", msg);
+          (gdb) 
+          mhackslab:gstep $ 
+
+        --- Tell gserver to quit:
+
+          mhackslab:gstep $ ./gserver quit_gserv
+
+          mhackslab:gstep $ 
+
+
+OPTIONS
+      -h    List all options, with brief explanations.
+
+      -v    Report program version and exit.
+
+TROUBLESHOOTING
+
+SEE ALSO
+      'gclient' man page.
+

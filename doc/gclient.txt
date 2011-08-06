@@ -1,0 +1,24 @@
+
+NAME
+      gclient - gdb client program
+
+SYNOPSIS
+      gclient [-h] [request_string]
+
+DESCRIPTION
+      The purpose of gclient is to receive a request string from the command-line and
+      relay it through a socket connection to a gserver program running gdb.
+      gclient will then read the response from the gserver program and output
+      it to stdout.
+
+      The intended use of gclient is to provide a debugging interface from
+      within a vim session, similar to other tools such as pyclewn.
+
+OPTIONS
+      -h    List all options, with brief explanations.
+
+      -v    Report program version and exit.
+
+SEE ALSO
+      'gserver' man page.
+

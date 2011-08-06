@@ -13,10 +13,66 @@
 static int port_num = 6667;
 static const char* addr_ip = "127.0.0.1";
 
+const char* PROG_VERSION = "0.1 " __DATE__;
+
+const char* USAGE = \
+"gclient - gdb client program\n" \
+"usage: \n"\
+"  gclient [options] command_string\n"\
+"\n" \
+"Options:\n" \
+"  -h    List all options, with brief explanations.\n" \
+"  -v    Report program version and exit.\n"\
+"\n" \
+"Commands:\n" \
+"  start_gdb\n"\
+"    Starts a gdb child process, terminating any running gdb process first.\n"\
+"\n"\
+"  gdb_cmd COMMAND_STRING\n"\
+"    Sends COMMAND_STRING to the gdb child process and reads a response.\n"\
+"\n"\
+"  quit_gdb\n"\
+"    Terminates any running gdb process\n"\
+"\n"\
+"  quit_gserv\n"\
+"    Exists the gserver program, terminating any running gdb process first.\n"\
+"\n"\
+"  debug_no_respond\n"\
+"    Receives the command from the gclient process but doesn't do any\n"\
+"    subsequent action.\n"\
+;
+
+static void usage() {
+  printf(USAGE);
+}
+
+static void parse_options(int argc, char** argv) {
+  while(--argc) {
+    const char* arg = argv[argc];
+    if(arg[0] != '-')
+      continue;
+    switch(arg[1]) {
+    case 'h':
+      usage();
+      exit(0);
+    case 'v':
+      printf("gclient version %s\n", PROG_VERSION);
+      exit(0);
+    default:
+      fprintf(stderr, "invalid option %s\n", arg);
+      exit(1);
+    }
+  }
+}
+
+
 int main(int argc, char** argv) {
   log_set_level(LOG_LEVEL_TRACE);
   TRACE("beg main()");
   INFO(bdata(bformat("gclient started %s, pid: %d", ctime_now(), getpid())));
+
+  // parse options
+  parse_options(argc, argv);
 
   if(argc < 2) {
     fprintf(stderr, "missing request arg\n");

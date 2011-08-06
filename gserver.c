@@ -22,6 +22,18 @@
 #define C505_FAILED_SEND_GDB_CMD "505 Failed Sending Gdb Command\n"
 #define C506_FAILED_RECV_GDB_RESP "506 Failed Receiving Gdb Response\n"
 
+
+const char* PROG_VERSION = "0.1 " __DATE__;
+
+const char* USAGE = \
+"gserver - gdb server program\n" \
+"usage: \n"\
+"  gserver [options]\n"\
+"\n" \
+"Options:\n" \
+"  -h    List all options, with brief explanations.\n" \
+"  -v    Report program version and exit.\n";
+
 static in_port_t port_num = 6667;
 static const int MAX_PENDING = 0;
 static int _quit = 0;
@@ -47,7 +59,27 @@ static struct Cmd cmds[] = {
 };
 static const int num_cmds = sizeof(cmds) / sizeof(cmds[0]);
 
+static void usage() {
+  printf(USAGE);
+}
+
 static void parse_options(int argc, char** argv) {
+  while(--argc) {
+    const char* arg = argv[argc];
+    if(arg[0] != '-')
+      continue;
+    switch(arg[1]) {
+    case 'h':
+      usage();
+      exit(0);
+    case 'v':
+      printf("gserver version %s\n", PROG_VERSION);
+      exit(0);
+    default:
+      fprintf(stderr, "invalid option %s\n", arg);
+      exit(1);
+    }
+  }
 }
 
 // cmd-handler: creates the child gdb process
