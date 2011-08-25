@@ -19,6 +19,131 @@ OPTIONS
 
       -v    Report program version and exit.
 
+VIM INTEGRATION
+      This section describes some tips and techniques for using the gclient program
+      to do line-by-line debugging in vim. Line-by-line stepping through source files 
+      can be achieved with a simple 2-window setup and a couple of mappings.
+
+      This example assumes that there are 2 windows open in vim, with a 'source-code'
+      window on top and a 'gdb status' window below:
+
+      --------------------------------------------------------------
+      | 1  // demo.c                                               |
+      | 2  int main(int argc, char** argv) {                       |
+      | 3    if(argc < 2)                                          |
+      | 4      return 1;                                           |
+      | 5    return 0;                                             |
+      | 6  }                                                       |
+      --------------------------------------------------------------
+      |Breakpoint 1 at 0x1fe4: file demo.c, line 3.                |
+      |Starting program: /home/wknight/demo                        |
+      |                                                            |
+      |Breakpoint 10, main (argc=1, argv=0xbffff834) at demo.c:3   |
+      |3	  if(argc < 2)                                           |
+      |(gdb)                                                       |
+      ------------------------------------------------------------- 
+
+      Note that the source window has line numbers turned on by doing ':set number'. This
+      is a cosmetic setting that isn't needed to implement the line-stepping, it just 
+      gives a little more feedback to the user.
+
+      However, another vim setting is more important for the source window. Show the
+      current source line in the window by doing the following setting:
+        :set cursorline
+
+      This example also assumes that the 'demo.c' program shown has been built with debug info
+      to produce the 'demo' program in the current directory. In addition, the 'gserver'
+      program should be running in a separate terminal and listening for gclient requests
+      on a socket.
+
+      Let's start by defining a vim mapping to give general commands to gdb through the
+      glclient interface:
+        :map <f4> :%!gclient gdb_cmd 
+
+      This command works by executing a shell command in vim using the ! operator. The
+      result of the command is returned from the shell and replaces the current content
+      of the status window. This buffer replacement is accomplished by specifying the 
+      % operator. The command sent to the shell is 'gclient gdb_cmd ', followed by whatever
+      the user types on the vim command-line and then hitting the 'return' key.
+
+      Now use the <f4> key mapping to input the following sequence of commands with the
+      cursor in the lower (gdb status) window:
+        :%!gclient start_gdb
+        :%!gclient gdb_cmd file demo
+        :%!gclient gdb_cmd start
+
+      After the 3rd command, the following should be displayed in
+      the status window:
+        ------------------------------------------------------------------
+        |Breakpoint 1 at 0x1fe4: file demo.c, line 3.                    |
+        |Starting program: /home/wknight/demo                            |
+        |                                                                | 
+        |Breakpoint 1, main (argc=1, argv=0xbffff834) at demo.c:3        |
+        |3	  if(argc < 2)                                               | 
+        |(gdb)                                                           |
+        ------------------------------------------------------------------
+
+      Now enter a 'next' command using the <f4> mapping:
+        :%!gclient gdb_cmd n
+
+      The content of the status window should be updated with the next program
+      line:
+        ------------------------------------------------------------------
+        |4	    return 1;                                                |
+        |(gdb)                                                           |
+        ------------------------------------------------------------------
+
+      We can now define another vim mapping with a sequence of commands to 1) step
+      the next instruction and 2) update the current cursor position in the
+      source window. There are many different ways to accomplish this in vim,
+      some more robust than others. The more robust methods would likely make
+      use of vim scripting functions. A very simple (but more brittle) approach 
+      is described below that doesn't make use of any vim scripting. Instead,
+      it's a more 'canned' approach that mimics a manual sequence of keystrokes.
+
+      The general idea is to capture the current line number and source file
+      name from the status window and then use those values to set the current
+      source file and line in the source window.
+
+      The mapping for doing this is given below and then the individual parts
+      are described:
+
+        map <f8> :%!gclient gdb_cmd nGk"lyw:%!gclient gdb_cmd info source2j2w"fyWk:ef:lj
+      
+      The first part simply performs the gdb 'next' command:
+        :%!gclient gdb_cmd n
+
+      Then next part moves to the bottom of the status window and then up 1 line:
+        Gk
+      This should put the cursor on the current line number.
+
+      The next part yanks the current line number into the 'l' register:
+        "lyw
+        
+      The next part gets the current source file from gdb into the status window:
+        :%!gclient gdb_cmd info source
+
+      Then it moves down 2 lines and over 2 words and yanks the source file
+      into the 'f' register:
+        2j2w"fyW
+
+      Next, it moves up to the source window:
+        k
+
+      Then it edits the current source file by inputting it on the command
+      line from the 'f' register:
+        :ef
+
+      Next, it jumps to the current source line by inputting it on the command
+      line from the 'l' register:
+        :l
+
+      Finally, it moves back down to the status window, where it is now ready to
+      step over another instruction:
+        j
+
+    A similar mapping could be created for doing a gdb 'step' command.
+
 SEE ALSO
       'gserver' man page.
 
