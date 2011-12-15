@@ -19,6 +19,23 @@ OPTIONS
 
       -v    Report program version and exit.
 
+CAVEATS
+			* Quoting
+			  Certain args passed to gdb, (printf for example) must be properly quoted.
+				This requires escaping the double-quote character with backslash.
+				Example:
+						%!gclient gdb_cmd "printf \"hi there\n\""
+
+			* Escaping special characters in vim
+			  Certain characters in vim must be escaped, such as the '%' char.
+				Example:
+						%!gclient gdb_cmd "printf \"num: \%d\n\", 5"
+
+			* Debugging programs that read from stdin
+			  If the debugged program tries to read from stdin,
+				the gserver/gclient interface doesn't currently handle
+			  it, and likely will appear to hang.
+
 VIM INTEGRATION
       This section describes some tips and techniques for using the gclient program
       to do line-by-line debugging in vim. Line-by-line stepping through source files 
