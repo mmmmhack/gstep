@@ -20,7 +20,7 @@ SETUP
       this time, there is no means for specifying a different port address, but
       an option for this will be added in a subsequent version.
 
-GENERAL
+COMMANDS
       The gserver program continually listens for and processes requests from 
       the socket connection.  Each request string consists of a command
       name, and in some cases followed by an argument.
@@ -38,6 +38,9 @@ GENERAL
 
         quit_gserv
           Exists the gserver program, terminating any running gdb process first.
+
+				help
+					Returns a list of gserver commands.
 
         debug_no_respond
           Receives the command from the gclient process but doesn't do any

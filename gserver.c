@@ -13,6 +13,7 @@
 #include "servsock.h"
 #include "gdb.h"
 
+// response codes
 #define C200_OK "200 OK\n"
 #define C400_BAD_REQ "400 Bad Request\n"
 #define C501_NOT_IMPL "501 Not Implemented\n"
@@ -49,12 +50,15 @@ static bstring start_gdb(bstring req);
 static bstring gdb_cmd(bstring req);
 static bstring quit_gdb(bstring req);
 static bstring quit_gserv(bstring req);
+static bstring help(bstring req);
 static bstring debug_no_respond(bstring req);
+// commands
 static struct Cmd cmds[] = {
   {"start_gdb", start_gdb, },
   {"gdb_cmd", gdb_cmd, },
   {"quit_gdb", quit_gdb, },
   {"quit_gserv", quit_gserv, },
+  {"help", help, },
   {"debug_no_respond", debug_no_respond, },
 };
 static const int num_cmds = sizeof(cmds) / sizeof(cmds[0]);
@@ -167,6 +171,21 @@ static bstring quit_gserv(bstring req) {
   }
   INFO("quitting");
   _quit = 1;
+  return bret;
+}
+
+// cmd-handler: help - lists commands
+static bstring help(bstring req) {
+  bstring bret = bfromcstr(C200_OK);
+	bstring bcommands = bfromcstr("commands: \n");
+	int i;
+  for(i = 0; i < num_cmds; ++i) {
+    struct Cmd* cmd = cmds + i;
+		char ln[256];
+		sprintf(ln, "  %s\n", cmd->name);
+		bconcat(bcommands, bfromcstr(ln));
+	} 
+  bconcat(bret, bcommands);
   return bret;
 }
 
