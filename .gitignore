@@ -1,0 +1,4 @@
+*.o
+gserver
+gclient
+hello
