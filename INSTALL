@@ -1,0 +1,8 @@
+To build it, just type 'make'.
+To install, you could create symlinks to the 2 binaries, 'gserver' and 'gclient' to
+your bin directory, if desired.
+
+To try it out, run 'gserver' in one shell window and fire up vim in another
+and try sourcing the 'gclient.vim' script.
+
+Better instructions coming soon!

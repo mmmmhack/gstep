@@ -1,0 +1,12 @@
+README for gstep
+
+See INSTALL for installation instructions.
+
+* What is gstep?
+  --------------
+	gstep is a project that provides a very simple solution for debugging with gdb while stepping
+	line-by-line through source files in vim.
+
+	It is open source and cross-platform. 
+
+  It is licensed under the GNU public license, version 3.
