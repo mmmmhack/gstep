@@ -17,12 +17,16 @@ const char* PROG_VERSION = "0.1 " __DATE__;
 
 const char* USAGE = \
 "gclient - gdb client program\n" \
+"A tool for debugging with gdb in other programs such as vim\n" \
 "usage: \n"\
 "  gclient [options] command_string\n"\
 "\n" \
 "Options:\n" \
 "  -h    List all options, with brief explanations.\n" \
 "  -v    Report program version and exit.\n"\
+"\n" \
+"Environment variables:\n" \
+"  GSERVER_PORT	: port number to communicate with gclient (default=6667)\n" \
 "\n" \
 "Commands:\n" \
 "  start_gdb\n"\
@@ -43,7 +47,7 @@ const char* USAGE = \
 ;
 
 static void usage() {
-  printf(USAGE);
+  printf("%s", USAGE);
 }
 
 static void parse_options(int argc, char** argv) {
@@ -73,6 +77,12 @@ int main(int argc, char** argv) {
 
   // parse options
   parse_options(argc, argv);
+
+	// get port from env
+	char* port_str = getenv("GSERVER_PORT");
+	if(port_str != NULL) {
+		port_num = atoi(port_str);
+	}
 
   if(argc < 2) {
     fprintf(stderr, "missing request arg\n");

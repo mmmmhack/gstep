@@ -5,19 +5,22 @@ CFLAGS += -Wall -g
 OS = OS_$(shell uname -s | tr '[:lower:]' '[:upper:]')
 
 defines += -D$(OS)
-includes = -I$(bstrlib_dir)/include -I.
-libs = -L$(bstrlib_dir)/lib -lbstrlib
-objs = util.o gdb.o servsock.o
+#includes = -I$(bstrlib_dir)/include -I.
+#libs = -L$(bstrlib_dir)/lib -lbstrlib
+objs = bstrlib.o util.o gdb.o servsock.o
 
 tests = $(basename $(wildcard test_*.c))
 
-all: gserver gclient
+all: gserver gclient hello
 
 gserver: gserver.o $(objs)
 	$(CC) $(CFLAGS) -o $@ gserver.o $(objs) $(libs)
 
 gclient: gclient.o $(objs)
 	$(CC) $(CFLAGS) -o $@ gclient.o $(objs) $(libs)
+
+hello: hello.o
+	$(CC) $(CFLAGS) -o$@ $<
 
 %.o: %.c
 	$(CC) $(CFLAGS) -o $@ $(defines) $(includes) -c $<

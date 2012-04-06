@@ -28,12 +28,16 @@ const char* PROG_VERSION = "0.1 " __DATE__;
 
 const char* USAGE = \
 "gserver - gdb server program\n" \
+"A tool for debugging with gdb in other programs such as vim\n" \
 "usage: \n"\
 "  gserver [options]\n"\
 "\n" \
 "Options:\n" \
-"  -h    List all options, with brief explanations.\n" \
-"  -v    Report program version and exit.\n";
+"  -h         List all options, with brief explanations.\n" \
+"  -v         Report program version and exit.\n" \
+"Environment variables:\n" \
+"  GSERVER_PORT	: port number to communicate with gclient (default=6667)\n" \
+;
 
 static in_port_t port_num = 6667;
 static const int MAX_PENDING = 0;
@@ -64,7 +68,7 @@ static struct Cmd cmds[] = {
 static const int num_cmds = sizeof(cmds) / sizeof(cmds[0]);
 
 static void usage() {
-  printf(USAGE);
+  printf("%s", USAGE);
 }
 
 static void parse_options(int argc, char** argv) {
@@ -305,6 +309,12 @@ int main(int argc, char** argv) {
   // parse options
   parse_options(argc, argv);
 
+	// get port from env
+	char* port_str = getenv("GSERVER_PORT");
+	if(port_str != NULL) {
+		port_num = atoi(port_str);
+	}
+
   // just fire up a socket to listen and wait for commands
 
   // create
@@ -333,6 +343,7 @@ int main(int argc, char** argv) {
   if(rc < 0)
     sys_err("listen failed");
   INFO("listening");
+	printf("listening on port %d\n", port_num);
 
   while(!_quit) {
     // accept
