@@ -75,7 +75,7 @@ function! s:SetupGdb()
 	endif
 
 	"save output
-	sil :w!
+	:w!gdb.output
 
 endfunction
 
@@ -124,6 +124,9 @@ function! GclientStep(step_type)
 	call <SID>GotoSrcLine(src, lnum)
 
 	call <SID>GotoGdbWin()
+
+	"save output
+	:w!gdb.output
 
 endfunction
 
