@@ -51,8 +51,12 @@ static void usage() {
 }
 
 static void parse_options(int argc, char** argv) {
-  while(--argc) {
-    const char* arg = argv[argc];
+	int i = 0;
+  while(++i < argc) {
+    const char* arg = argv[i];
+		// stop parsing options after 'gdb_cmd'
+		if(!strcmp(arg, "gdb_cmd"))
+			break;
     if(arg[0] != '-')
       continue;
     switch(arg[1]) {
