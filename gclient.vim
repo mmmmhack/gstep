@@ -1,18 +1,19 @@
 " gclient.vim	:	a vim script for source-line debugging in vim with gdb and gstep
+"
+" Last Change:   2012-04-09
+" Maintainer:		 William Knight <william.knight@gmail.com>
+" License:			 GPL version 3
 
 let g:top_win_height = 15
-"let g:help_file = g:ape_dir . "/" . "glient.vim.help.txt"
-let g:help_file = "glient.vim.help.txt"
 
-function! Init()
-	echo "initializing..."
-	call CloseWindows()
-	call SetupWindows()
-	call SetupGdb()
-	call SetMappings()
+function! Gclient()
+	call <SID>CloseWindows()
+	call <SID>SetupWindows()
+	call <SID>SetupGdb()
+	call <SID>SetMappings()
 endfunction
 
-function! CloseWindows()
+function! s:CloseWindows()
 	"goto final window
 	let endnr = winnr("$")
 	while endnr > 1
@@ -22,8 +23,8 @@ function! CloseWindows()
 	endwhile
 endfunction
 
-function! SetupWindows()
-	:e source
+function! s:SetupWindows()
+	:e source.tmp
 	"delete existing content
 	:1,$d
 	:new gdb.output
@@ -31,21 +32,21 @@ function! SetupWindows()
 	:1,$d
 endfunction
 
-function! GotoWin(nr)
+function! s:GotoWin(nr)
 	sil exe ":" a:nr "wincmd w"
 endfunction
 
-function! GotoSrcWin()
-	call GotoWin(1)
+function! s:GotoSrcWin()
+	call s:GotoWin(1)
 endfunction
 
-function! GotoGdbWin()
-	call GotoWin(2)
+function! s:GotoGdbWin()
+	call s:GotoWin(2)
 endfunction
 
 "starts gdb and debuggee program, sets exe index pos to 0
-function! SetupGdb()
-	call GotoGdbWin()
+function! s:SetupGdb()
+	call s:GotoGdbWin()
 
 	:sil exe "%!gclient start_gdb"
 	:sil 1,$y r
@@ -79,7 +80,7 @@ function! SetupGdb()
 endfunction
 
 "get-source-file.vim	:	parses output of gdb 'info source', returns fqp of source file
-function! GetExeSourceFile()
+function! s:GetExeSourceFile()
 	:sil %!gclient gdb_cmd info source
 	:sil exe ":1,$y s"
 	let info_source = @s
@@ -93,7 +94,7 @@ endfunction
 "get-current-line.vim	:	parses output of gdb 'bt' command to get the current line number of a running program
 "bt output:
 "#0  main (argc=1, argv=0xbffff444) at main.c:450
-function! GetExeSourceLine()
+function! s:GetExeSourceLine()
 	:sil %!gclient gdb_cmd bt
 	:sil 1,$y l
 	:let g:ln = @l
@@ -101,41 +102,41 @@ function! GetExeSourceLine()
 	return g:matches[1]
 endfunction
 
-function! GotoSrcLine(src, lnum)
-	call GotoSrcWin()
+function! s:GotoSrcLine(src, lnum)
+	call s:GotoSrcWin()
 	:sil exe ":e " a:src
 	:set cursorline
 	call cursor(a:lnum, 1)
 endfunction
 
-"does a step in gdb
-function! Step(step_type)
+"does a step in gdb 
+function! GclientStep(step_type)
 
 	"step
 	let step_type = a:step_type
 	:sil exe "%!gclient gdb_cmd " step_type
 
 	"get line info
-	let src = GetExeSourceFile()
-	let lnum = GetExeSourceLine()
+	let src = <SID>GetExeSourceFile()
+	let lnum = <SID>GetExeSourceLine()
 
 	"update src win
-	call GotoSrcLine(src, lnum)
+	call <SID>GotoSrcLine(src, lnum)
 
-	call GotoGdbWin()
+	call <SID>GotoGdbWin()
 
 endfunction
 
-function! SetMappings()
-	:map <f1> :call Help()
+function! s:SetMappings()
+	:map <f1> :call s:Help()
 	:map <f4> :%!gclient gdb_cmd 
-	:map <f7> :call Step('step')
-	:map <f8> :call Step('next')
+	:map <f7> :call GclientStep('step')
+	:map <f8> :call GclientStep('next')
 endfunction
 
-function! Help()
-	call CloseWindows()
-	exe ":e " . g:help_file
+function! s:Help()
+	call s:CloseWindows()
+	exe ":he gclient"
 endfunction
 
-call Init()
+"call s:Init()

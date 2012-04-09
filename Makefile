@@ -19,13 +19,21 @@ gserver: gserver.o $(objs)
 gclient: gclient.o $(objs)
 	$(CC) $(CFLAGS) -o $@ gclient.o $(objs) $(libs)
 
-hello: hello.o
-	$(CC) $(CFLAGS) -o$@ $<
+hello: otherfile.c hello.o
+	$(CC) $(CFLAGS) -o$@ $^
 
 %.o: %.c
-	$(CC) $(CFLAGS) -o $@ $(defines) $(includes) -c $<
+	$(CC) $(CFLAGS) -O0 -o $@ $(defines) $(includes) -c $<
 
 #.PRECIOUS: %.o
+
+install:
+	-ln -s $(CURDIR)/gserver ~/bin/gserver
+	-ln -s $(CURDIR)/gclient ~/bin/gclient
+	-mkdir -p ~/.vim/plugin
+	-mkdir -p ~/.vim/doc
+	cp gclient.vim ~/.vim/plugin/
+	cp gclient.txt ~/.vim/doc/
 
 clean:
 	-rm gserver gclient

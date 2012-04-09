@@ -1,0 +1,47 @@
+*gclient.txt* 	vim front-end plugin for gdb
+
+== Overview ==
+
+When run, this plugin will create two windows in vim, a 'source' window above and a 'gdb output'
+window below. If the 'gserver' process is running, you can then issue commands to gdb
+and observe the output in the bottom window. You can also step line-by-line through
+a debugged program and observe highlighted source lines in the top window. 
+
+Here is a example that steps through the demo 'hello' program included with the project:
+
+	1. Run the 'gserver' process in the gstep build directory:
+		$ ./gserver
+
+	2. Start vim in a separate window and run the plugin Gclient() function:
+  	:call Gclient()
+
+	  This should produce a split screen with 2 windows.
+
+	3. Tell gdb to load the 'hello' binary by hitting the <f4> key and then typing 'file hello', followed by a carriage return:
+		:%!gclient gdb_cmd file hello
+
+	4. Tell gdb to start debugging the program by hitting <f4> again, then 'start' (return) :
+	  :%!gclient gdb_cmd start
+
+		This should produce output similar to the following in the bottom window:
+			-----------------------------------------------------------------------
+			Temporary breakpoint 1 at 0x4005d3: file hello.c, line 8.
+			Starting program: ~/gstep/hello 
+
+			Temporary breakpoint 1, main (argc=1, argv=0x7fffffffe338) at hello.c:8
+			8		const char* progname = argv[0];
+			(gdb) 
+			-----------------------------------------------------------------------
+
+	5. Step through the source lines by hitting the <f7> and <f8> keys. The cursor line should be displayed
+	   under each source line in the top window after each step.
+
+
+== Mappings ==
+
+f1	show this help
+f4	send command to gdb
+f7	step (step through next line in gdb)
+f8	next (step over next line in gdb)
+
+
